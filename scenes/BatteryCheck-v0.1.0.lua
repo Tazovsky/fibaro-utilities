@@ -11,16 +11,16 @@ function getLowBatteryDevices(threshold)
 
     local devices = hub.getDevicesID(
         {
-            interface = "battery", 
+            interface = "battery",
             enabled = true,
             visible = true
         }
     )
     local emailMsg = 'Devices with low battery:\n\n'
-    
+
     if devices and type(devices) == "table" then
         for i, deviceId in ipairs(devices) do
-        
+
             local device = api.get("/devices/" .. tostring(deviceId))
             if tonumber(device.properties.batteryLevel) <= tonumber(threshold) then
 
@@ -43,5 +43,3 @@ if out then
     --hub.alert('email', userID, out, false, '')
     fibaro.call(userID, "sendEmail", "Fibaro: low battery!", out)
 end
-
-
