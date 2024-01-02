@@ -27,6 +27,8 @@ repos:
     - id: end-of-file-fixer
     - id: check-yaml
     - id: check-json
+      types: [ file ]  # override `types: [json]`
+      files: \.(json|fqa)$
     - id: fix-encoding-pragma
       args: ['--remove']
     - id: forbid-new-submodules
