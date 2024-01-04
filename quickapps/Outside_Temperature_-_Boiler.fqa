@@ -1,0 +1,83 @@
+{
+  "name": "Outside Temperature - Boiler",
+  "type": "com.fibaro.temperatureSensor",
+  "apiVersion": "1.2",
+  "initialProperties": {
+    "viewLayout": {
+      "$jason": {
+        "body": {
+          "header": {
+            "style": {
+              "height": "0"
+            },
+            "title": "quickApp_device_1257"
+          },
+          "sections": {
+            "items": [
+              {
+                "components": [
+                  {
+                    "name": "label_ID_0",
+                    "style": {
+                      "weight": "1.2"
+                    },
+                    "text": "Label",
+                    "type": "label",
+                    "visible": true
+                  },
+                  {
+                    "style": {
+                      "weight": "0.5"
+                    },
+                    "type": "space"
+                  }
+                ],
+                "style": {
+                  "weight": "1.2"
+                },
+                "type": "vertical"
+              }
+            ]
+          }
+        },
+        "head": {
+          "title": "quickApp_device_1257"
+        }
+      }
+    },
+    "uiCallbacks": [],
+    "quickAppVariables": [
+      {
+        "name": "BBQ_API_URL",
+        "type": "string",
+        "value": "http://192.168.1.16/api"
+      },
+      {
+        "name": "INTERVAL",
+        "type": "string",
+        "value": "900"
+      },
+      {
+        "name": "BBQGATEWAYTOKEN",
+        "type": "password",
+        "value": "********"
+      }
+    ],
+    "typeTemplateInitialized": true
+  },
+  "initialInterfaces": [],
+  "files": [
+    {
+      "name": "main",
+      "isMain": true,
+      "isOpen": true,
+      "content": "-- Temperature sensor type have no actions to handle\n-- To update temperature, update property \"value\" with floating point number, supported units: \"C\" - Celsius, \"F\" - Fahrenheit\n-- Eg. self:updateProperty(\"value\", { value= 18.12, unit= \"C\" }) \n\n-- To update controls you can use method self:updateView(<component ID>, <component property>, <desired value>). Eg:  \n-- self:updateView(\"slider\", \"value\", \"55\") \n-- self:updateView(\"button1\", \"text\", \"MUTE\") \n-- self:updateView(\"label\", \"text\", \"TURNED ON\") \n\n-- This is QuickApp inital method. It is called right after your QuickApp starts (after each save or on gateway startup). \n-- Here you can set some default values, setup http connection or get QuickApp variables.\n-- To learn more, please visit: \n--    * https://manuals.fibaro.com/home-center-3/\n--    * https://manuals.fibaro.com/home-center-3-quick-apps/\n\nfunction QuickApp:runConfig()\n\n    self.TOKEN = self:getVariable(\"BBQGATEWAYTOKEN\")\n    self.headers = {\n        [\"Content-Type\"] = \"application/json\",\n        [\"Accept\"] = \"application/json\",\n        [\"Authorization\"] = string.format(\"Bearer %s\", self.TOKEN)\n    }\n    self.interval = tonumber(self:getVariable(\"INTERVAL\")) * 60\n    self.api_url = self:getVariable(\"BBQ_API_URL\")\n    self:debug(\"config initialized\")\nend\n\nfunction QuickApp:main(param)\n    local endpoint = \"boiler\"\n    local endpoint_url = string.format(\"%s/%s\", self.api_url, endpoint)\n    api_request({\n        address = endpoint_url, \n        method = \"GET\", \n        headers = self.headers, \n        cont = function(response) \n            local outdoortemp = tonumber(response.outdoortemp)\n            self:debug(\"outdoortemp: \", outdoortemp)\n            self:updateProperty(\"value\", { value = outdoortemp, unit= \"C\" })\n            self:updateView(\"label_ID_0\", \"text\", string.format(\"Temperature: %s \u00b0C\", outdoortemp)) \n        end\n    })\n    \nend\n\n\nfunction QuickApp:mainLoop(param)\n    self:main(param)\n    fibaro.setTimeout(self.interval * 1000, function() \n        self:mainLoop(param)\n    end)\nend\n\nfunction QuickApp:onInit()\n    self:debug(\"onInit\")\n    self:runConfig()\n    self:mainLoop()\nend"
+    },
+    {
+      "name": "http_client",
+      "isMain": false,
+      "isOpen": false,
+      "content": "\nfunction api_request(args)\n    local address = args.address or error(\"address argument is missing\")\n    local method = args.method or error(\"method argument is missing\")\n    local headers = args.headers or error(\"headers argument is missing\")\n    local cont = args.cont or error(\"cont argument is missing\")\n    local request_body = args.request_body or {}\n    local checkCertificate = args.checkCertificate or false\n\n    local http = net.HTTPClient({timeout = 3 * 1000})\n\n    http:request(address, {\n        options={\n            data = json.encode(request_body or {}),\n            headers = headers,\n            checkCertificate = checkCertificate or false,\n            method = method\n        },\n        success = function(response)\n            if (response.status == 200 or response.status == 201) then\n                cont(json.decode(response.data))\n            else\n                error(\"Error: \" .. response.status);\n            end\n        end,\n        error = function(e)\n            error(e)\n        end\n    })\nend\n\n"
+    }
+  ]
+}
